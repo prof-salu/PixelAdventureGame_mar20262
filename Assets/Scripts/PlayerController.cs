@@ -7,55 +7,163 @@ public class PlayerMovement : MonoBehaviour
     private CapsuleCollider2D col;
 
     [Header("Movimento Horizontal")]
-    [SerializeField] private float velocidadeMovimento = 8f;
+    [SerializeField] private float moveSpeed = 8f;          // Velocidade de movimento
     private float horizontalInput;
 
-    // A direÁ„o para a qual o personagem est· olhando
-    private bool olhandoParaDireita = true;
+    [Header("Pulo")]
+    [SerializeField] private float jumpForce = 12f;         // For√ßa do pulo
+    [SerializeField] private float doubleJumpForce = 10f;   // For√ßa do pulo duplo
+    [SerializeField] private int extraJumps = 1;            // Quantidade de pulos extras (1 = pulo duplo)
+    private int jumpCount;
+    private bool jumpPressed;
+
+    [Header("Checagem de Ch√£o")]
+    [SerializeField] private Transform groundCheck;         // Ponto de checagem (objeto vazio nos p√©s)
+    [SerializeField] private float groundCheckRadius = 0.2f;
+    [SerializeField] private LayerMask groundLayer;         // Layer do ch√£o
+
+    [Header("Checagem de Parede")]
+    [SerializeField] private Transform wallCheck;           // Ponto de checagem lateral
+    [SerializeField] private float wallCheckRadius = 0.2f;
+    [SerializeField] private LayerMask wallLayer;           // Layer das paredes
+
+    [Header("Deslize na Parede")]
+    [SerializeField] private float wallSlideSpeed = .5f;     // Velocidade m√°xima de queda ao deslizar
+    [SerializeField] private float wallJumpForceX = 8f;     // For√ßa horizontal do pulo da parede (opcional)
+    [SerializeField] private float wallJumpForceY = 12f;    // For√ßa vertical do pulo da parede (opcional)
+
+    // Estados
+    private bool isGrounded;
+    private bool isTouchingWall;
+    private bool isWallSliding;
+    private bool facingRight = true;
 
     private void Awake()
     {
-        // O Awake roda antes mesmo do jogo comeÁar. Usamos para pegar os componentes.
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<CapsuleCollider2D>();
     }
 
     private void Update()
     {
-        // Captura os botıes do teclado (A/D ou Setas) no Update para n„o perder nenhum clique.
-        // Retorna -1 (esquerda), 0 (parado) ou 1 (direita).
+        // Captura inputs no Update para n√£o perder nenhum clique
         horizontalInput = Input.GetAxisRaw("Horizontal");
 
-        // Chama a funÁ„o que vira o personagem
+        if (Input.GetButtonDown("Jump"))
+        {
+            jumpPressed = true;
+        }
+
+        // Verifica estados
+        CheckWorld();
+        CheckWallSlide();
         Flip();
     }
 
     private void FixedUpdate()
     {
-        // FixedUpdate roda em intervalos fixos e È o lugar OBRIGAT”RIO para aplicar fÌsica.
-        Mover();
+        // Aplica movimento horizontal
+        Move();
+
+        // Aplica pulo
+        if (jumpPressed)
+        {
+            Jump();
+            jumpPressed = false;
+        }
     }
 
-    private void Mover()
+    private void CheckWorld()
     {
-        // Usamos rb.linearVelocity (o padr„o da Unity 6) para mover o personagem.
-        // No Eixo X: multiplicamos a direÁ„o pela velocidade.
-        // No Eixo Y: mantemos a velocidade de queda que a gravidade j· est· aplicando.
-        rb.linearVelocity = new Vector2(horizontalInput * velocidadeMovimento, rb.linearVelocity.y);
+        // Verifica se est√° no ch√£o
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+
+        // Verifica se est√° tocando parede
+        isTouchingWall = Physics2D.OverlapCircle(wallCheck.position, wallCheckRadius, wallLayer);
+
+        // Reseta contagem de pulos ao tocar o ch√£o
+        if (isGrounded)
+        {
+            jumpCount = 0;
+        }
+    }
+
+    private void CheckWallSlide()
+    {
+        // S√≥ desliza se estiver tocando a parede, n√£o estiver no ch√£o e estiver caindo
+        if (isTouchingWall && !isGrounded && rb.linearVelocity.y < 0)
+        {
+            isWallSliding = true;
+        }
+        else
+        {
+            isWallSliding = false;
+        }
+
+        // Aplica a velocidade de deslize
+        if (isWallSliding)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Clamp(rb.linearVelocity.y, -wallSlideSpeed, float.MaxValue));
+        }
+    }
+
+    private void Move()
+    {
+        // Movimento horizontal
+        rb.linearVelocity = new Vector2(horizontalInput * moveSpeed, rb.linearVelocity.y);
+    }
+
+    private void Jump()
+    {
+        // Pulo normal (no ch√£o)
+        if (isGrounded)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            jumpCount = 0;
+        }
+        // Pulo da parede (opcional, se quiser incluir)
+        else if (isWallSliding)
+        {
+            // Pula da parede para o lado oposto
+            float direction = facingRight ? -1f : 1f;
+            rb.linearVelocity = new Vector2(direction * wallJumpForceX, wallJumpForceY);
+            jumpCount = 0;
+        }
+        // Pulo duplo (ou extras)
+        else if (jumpCount < extraJumps)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, doubleJumpForce);
+            jumpCount++;
+        }
     }
 
     private void Flip()
     {
-        // Vira o personagem fisicamente (usando localScale) conforme a direÁ„o do movimento
-        if (horizontalInput > 0 && !olhandoParaDireita)
+        // Vira o personagem conforme a dire√ß√£o do movimento
+        if (horizontalInput > 0 && !facingRight)
         {
-            olhandoParaDireita = true;
+            facingRight = true;
             transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
         }
-        else if (horizontalInput < 0 && olhandoParaDireita)
+        else if (horizontalInput < 0 && facingRight)
         {
-            olhandoParaDireita = false;
+            facingRight = false;
             transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+        }
+    }
+
+    // Desenha gizmos para facilitar a configura√ß√£o no Editor
+    private void OnDrawGizmosSelected()
+    {
+        if (groundCheck != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+        }
+        if (wallCheck != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(wallCheck.position, wallCheckRadius);
         }
     }
 }
