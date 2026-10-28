@@ -5,6 +5,8 @@ public class PlayerMovement : MonoBehaviour
     [Header("Componentes")]
     private Rigidbody2D rb;
     private CapsuleCollider2D col;
+    private Animator anim;
+    private SpriteRenderer sprite;
 
     [Header("Movimento Horizontal")]
     [SerializeField] private float moveSpeed = 8f;          // Velocidade de movimento
@@ -42,6 +44,8 @@ public class PlayerMovement : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<CapsuleCollider2D>();
+        anim = GetComponent<Animator>();
+        sprite = GetComponent<SpriteRenderer>();
     }
 
     private void Update()
@@ -58,6 +62,7 @@ public class PlayerMovement : MonoBehaviour
         CheckWorld();
         CheckWallSlide();
         Flip();
+        UpdateAnimations();
     }
 
     private void FixedUpdate()
@@ -115,26 +120,20 @@ public class PlayerMovement : MonoBehaviour
 
     private void Jump()
     {
-        // Pulo normal (no chão)
         if (isGrounded)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
             jumpCount = 0;
         }
-        // Pulo da parede (opcional, se quiser incluir)
-        else if (isWallSliding)
-        {
-            // Pula da parede para o lado oposto
-            float direction = facingRight ? -1f : 1f;
-            rb.linearVelocity = new Vector2(direction * wallJumpForceX, wallJumpForceY);
-            jumpCount = 0;
-        }
-        // Pulo duplo (ou extras)
-        else if (jumpCount < extraJumps)
+        else if (jumpCount < extraJumps) // Seu Desafio do Pulo Duplo
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, doubleJumpForce);
             jumpCount++;
+
+            // NOVA LINHA: Dispara a animação da cambalhota!
+            anim.SetTrigger("doubleJump");
         }
+
     }
 
     private void Flip()
@@ -151,6 +150,35 @@ public class PlayerMovement : MonoBehaviour
             transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
         }
     }
+
+    private void UpdateAnimations()
+    {
+        // 1. Correndo (True se o Input não for zero)
+        bool isRunning = horizontalInput != 0;
+        anim.SetBool("isRunning", isRunning);
+
+        // 2. Chão (Usa a mesma variável do nosso CheckWorld!)
+        anim.SetBool("isGrounded", isGrounded);
+
+        // 3. Pulo e Queda (Envia a velocidade vertical do Rigidbody)
+        anim.SetFloat("yVelocity", rb.linearVelocity.y);
+
+        anim.SetBool("isWallSliding", isWallSliding);
+
+        // NOVA LÓGICA: Inverte a pintura do sprite se estiver na parede
+        if (isWallSliding)
+        {
+            // flipX = true inverte o desenho em relação à física atual
+            sprite.flipX = true;
+        }
+        else
+        {
+            // Volta ao normal quando sair da parede
+            sprite.flipX = false;
+        }
+
+    }
+
 
     // Desenha gizmos para facilitar a configuração no Editor
     private void OnDrawGizmosSelected()
