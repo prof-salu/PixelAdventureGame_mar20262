@@ -1,7 +1,11 @@
+using TMPro;
 using UnityEngine;
 
 public class ColetaItens : MonoBehaviour
 {
+    private int macasColetadas = 0;
+    public TMP_Text textoMaca;
+
     // Esta função é chamada automaticamente quando o Player atravessa um "Trigger"
     private void OnTriggerEnter2D(Collider2D colisao)
     {
@@ -10,6 +14,8 @@ public class ColetaItens : MonoBehaviour
         {
             // Destrói o objeto que foi tocado (a fruta desaparece!)
             Destroy(colisao.gameObject);
+            macasColetadas++;
+            textoMaca.text = "Maçãs: " + macasColetadas;
         }
     }
 }

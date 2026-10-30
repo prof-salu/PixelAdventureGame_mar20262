@@ -3992,6 +3992,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 275f407af692ee34da6070b073191a5e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ColetaItens
+  textoMaca: {fileID: 1735071576}
 --- !u!1001 &1508021928
 PrefabInstance:
   m_ObjectHideFlags: 0
